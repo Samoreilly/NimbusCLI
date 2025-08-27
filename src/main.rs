@@ -17,7 +17,9 @@ use clap::Parser;
 //cargo run -- --folder-name "clionprojects" --file-name "cargo"
 
 //THREE ARGUMENTS TO SEARCH FOR A FILE IN A SPECIFIC FOLDER WITH A SPECIFIC EXTENSION
-//cargo run -- --folder-name "Clionprojects" --file-name "cargo" --extension ".txt"
+//cargo run -- --folder-name "CLionProjects" --file-name "cargo" --extension ".txt"
+
+//cargo run -- --file-name "m" --extension ".txt"
 
 #[derive(Eq, PartialEq)]
 struct MatchItem {
@@ -96,14 +98,29 @@ impl FzFinder{
                     }
 
                     //gets the exact result - no others
-                    if file_name_str == &self.file_name {
-                        seen.clear();
-                        heap.clear();
-                        seen.insert(path.display().to_string());
-                        println!("Found: {}", path.display());
-                        bool_match = true;
-                        break;
+
+                    if file_name_str.eq_ignore_ascii_case(&self.file_name) {
+                        if let Some(ext) = &self.file_ext {
+                            // Check if the file ends with the extension
+                            if file_name_str.to_lowercase().ends_with(&ext.to_lowercase()) {
+                                seen.clear();
+                                heap.clear();
+                                seen.insert(path.display().to_string());
+                                println!("Found: {}", path.display());
+                                bool_match = true;
+                                break;
+                            }
+                        } else {
+                            // No extension specified, just match by name
+                            seen.clear();
+                            heap.clear();
+                            seen.insert(path.display().to_string());
+                            println!("Found: {}", path.display());
+                            bool_match = true;
+                            break;
+                        }
                     }
+
 
 
                 }
@@ -136,7 +153,7 @@ fn find_folder(folder_name: &str) -> PathBuf {// find folder that will be used t
         .filter(|e| e.file_type().is_dir())
     {
         if let Some(name) = entry.file_name().to_str() {
-            if name.eq_ignore_ascii_case(folder_name) {
+            if name.eq_ignore_ascii_case(folder_name.to_lowercase().as_str()) {
                 return entry.path().to_path_buf();
             }
         }
@@ -154,7 +171,7 @@ fn get_substring(input: &str, entry: &str, extension: &Option<String>) -> usize 
     let entry_str = entry;
 
     if let Some(ext) = extension {//if extension exists, check if the entry ends with the extension
-        if !entry.ends_with(ext){
+        if !entry.to_lowercase().ends_with(&ext.to_lowercase()){
             return 0;
         }
     }
@@ -174,7 +191,7 @@ fn get_substring(input: &str, entry: &str, extension: &Option<String>) -> usize 
 }
 fn get_subsequences(input: &str, entry: &str, extension: &Option<String>) -> usize {
     if let Some(ext) = extension {//if extension exists, check if the entry ends with the extension
-        if !entry.ends_with(ext){
+        if !entry.to_lowercase().ends_with(ext.to_lowercase().as_str()){
             return 0;
         }
     }
