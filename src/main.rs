@@ -21,6 +21,8 @@ use clap::Parser;
 
 //cargo run -- --file-name "m" --extension ".txt"
 
+//cargo run -- --folder-name "CLionProjects" --extension ".txt"
+
 #[derive(Eq, PartialEq)]
 struct MatchItem {
     substring_len: usize,
@@ -36,7 +38,7 @@ struct MatchItem {
 pub struct CliArgs {
     #[arg(short = 'd', long, default_value = "/home")]// default to current directory
     folder_name: PathBuf,
-    #[arg(short = 'f', long)]
+    #[arg(short = 'f', long, default_value = "")]
     file_name: String,
     #[arg(short = 'e', long)]
     extension: Option<String>,
@@ -63,6 +65,7 @@ impl From<CliArgs> for FzFinder{
 }
 impl FzFinder{
     pub fn fuzzy_finder(&self) -> Vec<String> {
+
         let mut bool_match = false;
         let mut seen: HashSet<String> = HashSet::new();
         let mut heap = BinaryHeap::new();
@@ -85,17 +88,32 @@ impl FzFinder{
 
 
                     // let file_name_str = entry.file_name().to_str().unwrap();
+
                     let subsequence_len = get_subsequences(&self.file_name, file_name_str, &self.file_ext);
                     let substring_len = get_substring(&self.file_name, file_name_str, &self.file_ext);
 
-                    if seen.insert(file_name_str.to_string()) {//this returns true if the item was not in the set
-                        heap.push(MatchItem {
-                            substring_len,
-                            subsequence_len,
-                            file_name: file_name_str.to_string(),
-                            path: path.display().to_string(),
-                        });
+                    if self.file_name.is_empty() {
+                        if let (Some(ext), Some(_folder_name)) = (&self.file_ext, &self.folder_name.to_str()) {
+                            if file_name_str.to_lowercase().ends_with(&ext.to_lowercase()) {
+                                heap.push(MatchItem {
+                                    substring_len,
+                                    subsequence_len,
+                                    file_name: file_name_str.to_string(),
+                                    path: path.display().to_string(),
+                                });
+                            }
+                        }
+                    } else {
+                        if seen.insert(file_name_str.to_string()) {
+                            heap.push(MatchItem {
+                                substring_len,
+                                subsequence_len,
+                                file_name: file_name_str.to_string(),
+                                path: path.display().to_string(),
+                            });
+                        }
                     }
+
 
                     //gets the exact result - no others
 
@@ -146,6 +164,7 @@ impl FzFinder{
     }
 }
 fn find_folder(folder_name: &str) -> PathBuf {// find folder that will be used to find the folder in fuzzy finder with folder and file arguments
+
     let home_dir = dirs::home_dir().expect("Could not find home directory");
     for entry in WalkDir::new(home_dir)
         .into_iter()
@@ -166,6 +185,9 @@ fn find_folder(folder_name: &str) -> PathBuf {// find folder that will be used t
 
 fn get_substring(input: &str, entry: &str, extension: &Option<String>) -> usize {
 
+    if input.is_empty() {
+        return 0;
+    }
     let mut longest = 0;//keep track of longest substring
     let input_chars: Vec<char> = input.chars().collect();
     let entry_str = entry;
@@ -190,6 +212,11 @@ fn get_substring(input: &str, entry: &str, extension: &Option<String>) -> usize 
     longest
 }
 fn get_subsequences(input: &str, entry: &str, extension: &Option<String>) -> usize {
+
+    if input.is_empty() {
+        return 0;
+    }
+
     if let Some(ext) = extension {//if extension exists, check if the entry ends with the extension
         if !entry.to_lowercase().ends_with(ext.to_lowercase().as_str()){
             return 0;
