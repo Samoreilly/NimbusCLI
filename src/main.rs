@@ -2,14 +2,14 @@
 
 use std::cmp::Ordering;
 use std::collections::HashSet;
-use std::io;
 use walkdir::WalkDir;
-use std::env;
 use std::env::current_dir;
-use std::hash::Hash;
 use std::collections::BinaryHeap;
+use std::path::{Path, PathBuf};
 use clap::Parser;
+use std::env;
 
+//cargo run -- --folder-name "clionprojects" --file-name "cargo"
 #[derive(Eq, PartialEq)]
 struct MatchItem {
     substring_len: usize,
@@ -19,44 +19,55 @@ struct MatchItem {
 }
 #[derive(Parser, Debug)]
 #[command(name = "multipurposecli")]
-#[command(author = "You")]
+#[command(author = "Sam O'Reilly")]
 #[command(version = "1.0")]
 #[command(about = "Search files with fuzzy matching")]//CLAP CONVERTS SNAKE CASE TO KEBAB CASE so use dash in arguments
 pub struct CliArgs {
-    #[arg(default_value = ".")]// default to current directory
-    folder_name: String,
-    #[arg(short, long)]
-    file_name: Option<String>,
-    #[arg(short, long)]
+    #[arg(short = 'd', long, default_value = "/home")]// default to current directory
+    folder_name: PathBuf,
+    #[arg(short = 'f', long)]
+    file_name: String,
+    #[arg(short = 'e', long)]
     extension: Option<String>,
 }
 //cargo run -- --file-name "notes"
+#[derive(Parser, Debug)]
+#[command(name = "multipurposecli")]
+#[command(author = "Sam O'Reilly")]
+#[command(version = "1.0")]
+#[command(about = "Search files with fuzzy matching")]
 pub struct FzFinder{
+    #[arg(short, long)]
+    pub folder_name: PathBuf,
     pub file_name: String,
 }
 impl From<CliArgs> for FzFinder{
     fn from(cli: CliArgs) -> Self {
         Self {
-            file_name: cli.file_name.unwrap_or_default(),
+            folder_name: cli.folder_name,
+            file_name: cli.file_name,
         }
     }
 }
 impl FzFinder{
-    pub fn fuzzy_finder(&self) -> Vec<String> {
+    pub fn fuzzy_finder(&self) -> Vec<String> {//cargo run -- --file-name "multipurposecli.txt"
         let mut bool_match = false;
         let mut seen: HashSet<String> = HashSet::new();
         let mut heap = BinaryHeap::new();
 
-        let home_dir = dirs::home_dir().expect("Could not find home directory");
+        let folder_path = find_folder(&self.folder_name.to_string_lossy());
 
-        for entry in WalkDir::new(home_dir).into_iter().filter_map(|e| e.ok()) {
+        let _home_dir = dirs::home_dir().expect("Could not find home directory");
+
+        for entry in WalkDir::new(&folder_path).into_iter().filter_map(|e| e.ok()) {
+
             //compare every entry with a substring of the input
             let path = entry.path();
             if let Some(file_name) = path.file_name(){
                 if let Some(file_name_str) = file_name.to_str() {
 
 
-                    let file_name_str = entry.file_name().to_str().unwrap();
+                    // let file_name_str = entry.file_name().to_str().unwrap();
                     let subsequence_len = get_subsequences(&self.file_name, file_name_str);
                     let substring_len = get_substring(&self.file_name, file_name_str);
 
@@ -85,7 +96,7 @@ impl FzFinder{
             }
 
         }
-        if(bool_match) {
+        if bool_match{
             return Vec::new();
         }
 
@@ -96,12 +107,32 @@ impl FzFinder{
                 break;
             }
         }
-        let formatted = top_matches.join("\n");
+        let formatted = top_matches.join("\n\n");
+
         println!("{}", formatted);
         top_matches
 
     }
 }
+fn find_folder(folder_name: &str) -> PathBuf {// find folder that will be used to find the folder in fuzzy finder with folder and file arguments
+    let home_dir = dirs::home_dir().expect("Could not find home directory");
+    for entry in WalkDir::new(home_dir)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().is_dir())
+    {
+        if let Some(name) = entry.file_name().to_str() {
+            if name == folder_name {
+                return entry.path().to_path_buf();
+            }
+        }
+    }
+    let home_path: PathBuf = PathBuf::from("/home");
+    eprintln!("Folder not found, using default home directory");
+    home_path
+
+}
+
 fn get_substring(input: &str, entry: &str) -> usize {
 
     let mut longest = 0;//keep track of longest substring
@@ -141,7 +172,7 @@ impl PartialOrd for MatchItem {
     }
 }
 
-fn find_file(input: &String){
+fn _find_file(input: &String){
     println!("Looking for files in");
 
     let curr_dir = current_dir().expect("Could not find current directory");
@@ -178,7 +209,7 @@ fn main() {
 
     let cli = CliArgs::parse();
     let fz_finder: FzFinder = cli.into();
-    let matches = fz_finder.fuzzy_finder();
+    fz_finder.fuzzy_finder();
 
     parse_by_argument()
 
