@@ -8,6 +8,7 @@ use std::env;
 use std::env::current_dir;
 use std::hash::Hash;
 use std::collections::BinaryHeap;
+use clap::Parser;
 
 #[derive(Eq, PartialEq)]
 struct MatchItem {
@@ -15,6 +16,14 @@ struct MatchItem {
     subsequence_len: usize,
     file_name: String,
     path: String,
+}
+#[derive(Parser, Debug)]
+struct CliArgs {
+    #[arg(default_value = ".")]// default to current directory
+    folder_name: String,
+
+    file_name: Option<String>,
+    extension: Option<String>,
 }
 
 // custom ordering: max-heap
@@ -138,6 +147,9 @@ fn get_subsequences(input: &str, entry: &str) -> usize{
     input.chars().filter(|&c| entry_text.any(|x| x == c)).count()
 }
 
+fn parse_by_argument(){
+}
+
 fn main() {
     println!("Enter a file you are looking for");
     let mut input = String::new();
@@ -145,7 +157,15 @@ fn main() {
     io::stdin().read_line(&mut input).expect("Failed to read line");
     let input = input.trim().to_string();
 
-    fuzzy_finder(&input);
+    let cli = CliArgs::parse();
+
+    parse_by_argument()
+
+
+
+
+
+    // fuzzy_finder(&input);//works -- COMMENTED OUT WHILE WORKING ON OTEHR FEATURES
     // find_file(&input);
     // println!("Finished");
 
