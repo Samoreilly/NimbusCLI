@@ -7,6 +7,4 @@ edition = "2024"
 walkdir = "2.5.0"
 dirs = "6.0.0"
 clap = { version = "4", features = ["derive"] }
-ratatui = "0.28.0"
-crossterm = "0.28.0"
-color-eyre = "0.6.5"
+cursive = { git = "https://github.com/gyscos/cursive" }

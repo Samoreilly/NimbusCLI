@@ -1,12 +1,13 @@
 //NOTES ARE IN MULTIPURPOSECLI.TXT IN HOME DIRECTORY
 
 use std::cmp::Ordering;
-use std::collections::HashSet;
-use walkdir::WalkDir;
+use std::collections::{BinaryHeap, HashSet};
 use std::env::current_dir;
-use std::collections::BinaryHeap;
-use std::path::{PathBuf};
+use std::path::PathBuf;
 use clap::Parser;
+use walkdir::WalkDir;
+
+
 
 //TO TEST OUT IN TERMINAL
 
@@ -70,11 +71,33 @@ impl FzFinder{
         let mut seen: HashSet<String> = HashSet::new();
         let mut heap = BinaryHeap::new();
 
+        let folder_only = self.file_name.is_empty()
+            && self.file_ext.as_ref().map_or(true, |s| s.is_empty())
+            && self.folder_name != PathBuf::from("/home");
+
+        let extension_only = self.file_name.is_empty()
+            && self.file_ext.as_ref().map_or(false, |s| !s.is_empty())
+            && self.folder_name == PathBuf::from("/home");
+
         let folder_path: PathBuf = if self.folder_name == PathBuf::from("/home") {
             self.folder_name.clone()
         }else{
             find_folder(&self.folder_name.to_string_lossy())
         };
+
+
+        if folder_only || extension_only {
+            println!("AI ASSISTANCE:");
+            println!("You can use the following valid commands:\n");
+            let valid_set = valid_commands_set();
+            for cmd in &valid_set {
+                println!("{} \n", cmd);
+            }
+            return Vec::new();
+        }
+
+
+
 
 
         let _home_dir = dirs::home_dir().expect("Could not find home directory");
@@ -268,23 +291,33 @@ fn _find_file(input: &String){
     }
     println!("Exiting File Finder");
 }
-
+fn valid_commands_set() -> HashSet<&'static str> {
+    [
+        // Single argument
+        r##"--file-name <example-file>"##,
+        r##"--folder-name <example-dir-name>"##,
+        // Two arguments
+        r##"--folder-name <example-dir-name> --file-name <example-file>"##,
+        r##"--file-name <example-file> --extension <.sh | .png | .txt>"##,
+        r##"--folder-name <example-dir-name> --extension <.sh | .png | .txt>"##,
+        // Three arguments
+        r##"--folder-name <example-dir-name>--file-name <example-file> --extension <.sh | .png | .txt>"##,
+    ]
+        .iter()
+        .cloned()
+        .collect()
+}
 
 
 fn parse_by_argument(){
 }
 
 fn main() {
-
     let cli = CliArgs::parse();
     let fz_finder: FzFinder = cli.into();
     fz_finder.fuzzy_finder();
 
     parse_by_argument()
-
-
-
-
 
     // fuzzy_finder(&input);//works -- COMMENTED OUT WHILE WORKING ON OTEHR FEATURES
     // find_file(&input);
