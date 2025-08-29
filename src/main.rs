@@ -1,16 +1,16 @@
 //NOTES ARE IN MULTIPURPOSECLI.TXT IN HOME DIRECTORY
 
+mod cache;
+
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashSet};
 use std::env::current_dir;
 use std::path::PathBuf;
+use std::sync::Arc;
 use clap::{Command, Parser};
+use tokio::signal;
 use walkdir::WalkDir;
-
-
-
-
-
+use crate::cache::Cache;
 //TO TEST OUT IN TERMINAL
 
 //SINGLE ARGUMENT TO SEARCH FOR A FILE
@@ -45,6 +45,7 @@ pub struct CliArgs {
     file_name: String,
     #[arg(short = 'e', long)]
     extension: Option<String>,
+
 }
 #[derive(Parser, Debug)]
 #[command(name = "multipurposecli")]
@@ -67,7 +68,8 @@ impl From<CliArgs> for FzFinder{
     }
 }
 impl FzFinder{
-    pub fn fuzzy_finder(&self) -> Vec<String> {
+    pub fn fuzzy_finder(&self, cache: Arc<Cache<String, String>>) -> Vec<String> {
+
 
         let mut bool_match = false;
         let mut seen: HashSet<String> = HashSet::new();
@@ -81,7 +83,7 @@ impl FzFinder{
             && self.file_ext.as_ref().map_or(false, |s| !s.is_empty())
             && self.folder_name == PathBuf::from("/home");
 
-        let folder_path: PathBuf = if self.folder_name == PathBuf::from("/home") {
+        let mut folder_path: PathBuf = if self.folder_name == PathBuf::from("/home") {
             self.folder_name.clone()
         }else{
             find_folder(&self.folder_name.to_string_lossy())
@@ -97,11 +99,21 @@ impl FzFinder{
             }
             return Vec::new();
         }
+        //CACHE IMPLEMENTATION
+
+        if !self.file_name.is_empty() {
+            if let Some(cached_path) = cache.get_value(&self.file_name) {
+               folder_path = PathBuf::from(cached_path);
+                println!("Found a cached path")
+            } else {
+                cache.insert(self.file_name.clone(), folder_path.to_string_lossy().to_string());
+                cache.clone().write_to_file("dashmap.txt");
+                println!("Cached: {} {}", &self.file_name, folder_path.display());
+            }
+        }
 
 
-
-
-
+        //CACHE IMPLEMENTATION
         let _home_dir = dirs::home_dir().expect("Could not find home directory");
 
         for entry in WalkDir::new(folder_path).into_iter().filter_map(|e| e.ok()) {
@@ -266,33 +278,6 @@ impl PartialOrd for MatchItem {
     }
 }
 
-fn _find_file(input: &String){
-    println!("Looking for files in");
-
-    let curr_dir = current_dir().expect("Could not find current directory");
-    println!("Current Directory: {}", curr_dir.display());
-
-
-    let home_dir = dirs::home_dir().expect("Could not find home directory");
-
-    for entry in WalkDir::new(home_dir).into_iter().filter_map(|e| e.ok()) {
-        let path = entry.path();
-
-
-        if path.is_file(){
-            if let Some(file_name) = path.file_name(){
-                if let Some(file_name_str) = file_name.to_str() {
-                    if file_name_str.to_lowercase() == input.to_lowercase() {
-                        println!("Found: {}", path.display());
-
-                    }
-
-                }
-            }
-        }
-    }
-    println!("Exiting File Finder");
-}
 fn valid_commands_set() -> HashSet<&'static str> {
     [
         // Single argument
@@ -319,19 +304,16 @@ fn valid_commands_set() -> HashSet<&'static str> {
         .collect()
 }
 
+#[tokio::main]
+async fn main() {
+    let cache = Arc::new(crate::cache::Cache::<String, String>::new());//arcs allows cache to be shared between threads
+    cache.read_from_file("dashmap.txt");
+    cache.clone().clean_lfu();
 
-fn parse_by_argument(){
-}
-
-fn main() {
+    let cache_clone = cache.clone();
     let cli = CliArgs::parse();
     let fz_finder: FzFinder = cli.into();
-    fz_finder.fuzzy_finder();
 
-    parse_by_argument()
-
-    // fuzzy_finder(&input);//works -- COMMENTED OUT WHILE WORKING ON OTEHR FEATURES
-    // find_file(&input);
-    // println!("Finished");
+    fz_finder.fuzzy_finder(cache_clone.clone());
 
 }
