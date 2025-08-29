@@ -1,7 +1,6 @@
 use dashmap::DashMap;
 use std::hash::Hash;
 use std::time::Duration;
-use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use serde::{Serialize, Deserialize};
 use serde_json;

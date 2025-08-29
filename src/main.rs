@@ -4,6 +4,7 @@ mod cache;
 
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashSet};
+use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 use clap::{Parser};
@@ -23,6 +24,10 @@ use crate::cache::Cache;
 //cargo run -- --file-name "m" --extension ".txt"
 
 //cargo run -- --folder-name "CLionProjects" --extension ".txt"
+
+//cargo run -- --folder-name "CLionProjects" --extension ".txt" --content "a"
+
+
 
 #[derive(Eq, PartialEq)]
 struct MatchItem {
@@ -45,6 +50,8 @@ pub struct CliArgs {
     extension: Option<String>,
     #[arg(short = 'l', long, default_value = "10")]
     limit: Option<usize>,
+    #[arg(short = 'c', long)]
+    content: Option<String>,
 
 }
 #[derive(Parser, Debug)]
@@ -57,7 +64,8 @@ pub struct FzFinder{
     pub folder_name: PathBuf,
     pub file_name: String,
     pub file_ext: Option<String>,
-    limit: Option<usize>,
+    pub limit: Option<usize>,
+    pub content: Option<String>,
 }
 impl From<CliArgs> for FzFinder{
     fn from(cli: CliArgs) -> Self {
@@ -66,6 +74,7 @@ impl From<CliArgs> for FzFinder{
             file_name: cli.file_name,
             file_ext: cli.extension,
             limit: cli.limit,
+            content: cli.content,
         }
     }
 }
@@ -118,7 +127,6 @@ impl FzFinder{
             }
         }
 
-
         //CACHE IMPLEMENTATION
         let _home_dir = dirs::home_dir().expect("Could not find home directory");
 
@@ -129,6 +137,40 @@ impl FzFinder{
 
             if let Some(file_name) = path.file_name(){
                 if let Some(file_name_str) = file_name.to_str(){
+
+                    //IF CONTENT ARGUMENT IS PRESENT, CHECK IF CONTENT IS IN FILE
+                    // cargo run -- --folder-name "CLionProjects" --extension ".txt" --content "a"
+
+                    let mut count = 0;
+                    if let Some(content) = &self.content {
+                        if path.is_file() {
+                            match fs::read_to_string(path) {
+                                Ok(contents) => {
+                                    for (index, line) in contents.lines().enumerate() {
+                                        if line.contains(content){
+                                            if(count >= 15){
+                                                break;
+                                            }
+                                            count += 1;
+                                            println!(
+                                                "Found in file {} on line {}: {} \n",
+                                                path.display(),
+                                                index + 1,
+                                                line
+                                            );
+                                        }
+                                    }
+                                }
+                                Err(_err) => {
+
+                                }
+                            }
+                            return Vec::new();
+                        } else {
+                            // println!("Skipping directory: {}", path.display());
+                        }
+
+                    }
 
 
                     // let file_name_str = entry.file_name().to_str().unwrap();
