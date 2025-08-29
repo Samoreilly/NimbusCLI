@@ -4,8 +4,10 @@ use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashSet};
 use std::env::current_dir;
 use std::path::PathBuf;
-use clap::Parser;
+use clap::{Command, Parser};
 use walkdir::WalkDir;
+
+
 
 
 
@@ -85,10 +87,10 @@ impl FzFinder{
             find_folder(&self.folder_name.to_string_lossy())
         };
 
-
+        //cargo run -- --extension "d"
+        //invalid command for e.g.
         if folder_only || extension_only {
-            println!("AI ASSISTANCE:");
-            println!("You can use the following valid commands:\n");
+            println!("\n\x1b[35mYou can use the following valid commands:\x1b[0m\n");
             let valid_set = valid_commands_set();
             for cmd in &valid_set {
                 println!("{} \n", cmd);
@@ -294,14 +296,23 @@ fn _find_file(input: &String){
 fn valid_commands_set() -> HashSet<&'static str> {
     [
         // Single argument
-        r##"--file-name <example-file>"##,
-        r##"--folder-name <example-dir-name>"##,
+        "\x1b[32m--file-name\x1b[0m \x1b[37m<example-file>\x1b[0m",
+        "\x1b[36m--folder-name\x1b[0m \x1b[37m<example-dir-name>\x1b[0m",
+
         // Two arguments
-        r##"--folder-name <example-dir-name> --file-name <example-file>"##,
-        r##"--file-name <example-file> --extension <.sh | .png | .txt>"##,
-        r##"--folder-name <example-dir-name> --extension <.sh | .png | .txt>"##,
+        "\x1b[36m--folder-name\x1b[0m \x1b[37m<example-dir-name>\x1b[0m \x1b[32m--file-name\x1b[0m \x1b[37m<example-file>\x1b[0m",
+        //...
+        "\x1b[32m--file-name\x1b[0m \x1b[37m<example-file>\x1b[0m \x1b[31m--extension\x1b[0m \x1b[33m<.sh | .png | .txt>\x1b[0m",
+
+    //...
+        "\x1b[36m--folder-name\x1b[0m \x1b[37m<example-dir-name>\x1b[0m \x1b[31m--extension\x1b[0m \x1b[33m<.sh | .png | .txt>\x1b[0m",
+
+    //...
         // Three arguments
-        r##"--folder-name <example-dir-name>--file-name <example-file> --extension <.sh | .png | .txt>"##,
+        "\x1b[36m--folder-name\x1b[0m \x1b[37m<example-dir-name>\x1b[0m \
+\x1b[32m--file-name\x1b[0m \x1b[37m<example-file>\x1b[0m \
+\x1b[31m--extension\x1b[0m \x1b[33m<.sh | .png | .txt>\x1b[0m"
+
     ]
         .iter()
         .cloned()
