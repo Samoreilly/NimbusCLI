@@ -43,6 +43,8 @@ pub struct CliArgs {
     file_name: String,
     #[arg(short = 'e', long)]
     extension: Option<String>,
+    #[arg(short = 'l', long, default_value = "10")]
+    limit: Option<usize>,
 
 }
 #[derive(Parser, Debug)]
@@ -55,6 +57,7 @@ pub struct FzFinder{
     pub folder_name: PathBuf,
     pub file_name: String,
     pub file_ext: Option<String>,
+    limit: Option<usize>,
 }
 impl From<CliArgs> for FzFinder{
     fn from(cli: CliArgs) -> Self {
@@ -62,6 +65,7 @@ impl From<CliArgs> for FzFinder{
             folder_name: cli.folder_name,
             file_name: cli.file_name,
             file_ext: cli.extension,
+            limit: cli.limit,
         }
     }
 }
@@ -101,7 +105,11 @@ impl FzFinder{
 
         if !self.file_name.is_empty() {
             if let Some(cached_path) = cache.get_value(&self.file_name) {
-               folder_path = PathBuf::from(cached_path);
+               // folder_path = PathBuf::from(cached_path);
+                if self.folder_name == PathBuf::from("/home")  && self.file_ext.is_none(){
+                    println!("{}", cached_path.clone().to_string());
+                    return vec![cached_path];
+                }
                 // println!("Found a cached path")
             } else {
                 cache.insert(self.file_name.clone(), folder_path.to_string_lossy().to_string());
@@ -118,8 +126,9 @@ impl FzFinder{
 
             //compare every entry with a substring of the input
             let path = entry.path();
+
             if let Some(file_name) = path.file_name(){
-                if let Some(file_name_str) = file_name.to_str() {
+                if let Some(file_name_str) = file_name.to_str(){
 
 
                     // let file_name_str = entry.file_name().to_str().unwrap();
@@ -187,7 +196,7 @@ impl FzFinder{
         let mut top_matches = Vec::new();
         while let Some(item) = heap.pop() {
             top_matches.push(item.path);//shows path
-            if top_matches.len() >= 10 {
+            if top_matches.len() >= self.limit.unwrap() {
                 break;
             }
         }
@@ -306,7 +315,7 @@ fn valid_commands_set() -> HashSet<&'static str> {
 async fn main() {
     let cache = Arc::new(crate::cache::Cache::<String, String>::new());//arcs allows cache to be shared between threads
     cache.read_from_file("dashmap.txt");
-    cache.clone().clean_lfu();
+    // cache.clone().clean_lfu();
 
     let cache_clone = cache.clone();
     let cli = CliArgs::parse();

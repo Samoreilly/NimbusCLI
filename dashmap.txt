@@ -1,9 +1,9 @@
 [
   [
-    "multipurposecli.txt",
+    "d",
     {
       "value": "/home",
-      "expires_at": 1756477902,
+      "expires_at": 1756479069,
       "frequency": 0
     }
   ],
@@ -16,10 +16,18 @@
     }
   ],
   [
+    "multipurposecli.txt",
+    {
+      "value": "/home",
+      "expires_at": 1756479384,
+      "frequency": 0
+    }
+  ],
+  [
     "cargo",
     {
       "value": "/home/sam-o-reilly/CLionProjects",
-      "expires_at": 1756477891,
+      "expires_at": 1756478401,
       "frequency": 0
     }
   ],
@@ -27,7 +35,7 @@
     "m",
     {
       "value": "/home",
-      "expires_at": 1756477881,
+      "expires_at": 1756479094,
       "frequency": 0
     }
   ]

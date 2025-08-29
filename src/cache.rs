@@ -33,65 +33,36 @@ impl<K, V> Cache<K, V> where
         }
     }
 
-    pub async fn clean_lfu(self: Arc<Self>){
-        tokio::spawn(async move{
-            loop{
-                tokio::time::sleep(Duration::from_secs(10)).await;
-                self.lfu();
-            }
-
-        });
-    }
+    // pub async fn clean_lfu(self: Arc<Self>){
+    //     tokio::spawn(async move{
+    //         loop{
+    //             tokio::time::sleep(Duration::from_secs(10)).await;
+    //             self.lfu();
+    //         }
+    //
+    //     });
+    // }
     pub fn insert(&self, key: K, value: V){
         let entry = CacheEntry {
             value,
             expires_at: now_epoch_seconds() + DURATION.as_secs(),
             frequency: 0,
         };
-        if self.map.len() >= CAPACITY {
-            self.lfu();
-        }
+
         self.map.insert(key, entry);
     }
 
     pub fn get_value(&self, key: &K) -> Option<V>{
 
-        if let Some(mut self_ref) = self.map.get_mut(key) {//gets direct object so it can be modified in place
-            if now_epoch_seconds() >= self_ref.expires_at {
-                let cloned_key = key.clone();
+        if let Some(self_ref) = self.map.get_mut(key) {//gets direct object so it can be modified in place
 
-                drop(self_ref);//drops the reference/lock so it can be removed from the map
-
-                self.map.remove(key);
-                // println!("Removed expired key: {}", cloned_key);
-
-                self.write_to_file("deleted_keys.txt");
-                return None;
-            }
-            self_ref.frequency += 1;
             Some(self_ref.value.clone())
         }else{
             None
         }
     }
 
-    pub fn lfu(&self){
 
-        let mut min_freq = u32::MAX;
-        let mut min_key = None;
-
-        for kv in self.map.iter() {
-            let entry = kv.value();
-            if entry.frequency < min_freq {
-                min_freq = entry.frequency;
-                min_key = Some(kv.key().clone());
-            }
-        }
-        if let Some(key) = min_key {
-            self.map.remove(&key);
-        }
-
-    }
     pub fn read_from_file(&self, path: &str) {
         let file = File::open(path).expect("file not found");
         let reader = BufReader::new(file);
