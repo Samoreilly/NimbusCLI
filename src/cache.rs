@@ -63,7 +63,7 @@ impl<K, V> Cache<K, V> where
                 drop(self_ref);//drops the reference/lock so it can be removed from the map
 
                 self.map.remove(key);
-                println!("Removed expired key: {}", cloned_key);
+                // println!("Removed expired key: {}", cloned_key);
 
                 self.write_to_file("deleted_keys.txt");
                 return None;
@@ -101,10 +101,10 @@ impl<K, V> Cache<K, V> where
         for(k, v) in entries {
             self.map.insert(k, v);
         }
-        println!("Finished reading from file, length of vector: {}", self.map.len())
+        // println!("Finished reading from file, length of vector: {}", self.map.len())
     }
     pub fn write_to_file(&self, path: &str) {
-        println!("Writing to file");
+        // println!("Writing to file");
         let entries: Vec<(_, _)> = self.map.iter().map(|kv| (kv.key().clone(), kv.value().clone())).collect();
 
         let serialized = serde_json::to_string_pretty(&entries).unwrap();

@@ -77,9 +77,9 @@ impl FzFinder{
             && self.file_ext.as_ref().map_or(true, |s| s.is_empty())
             && self.folder_name != PathBuf::from("/home");
 
-        let extension_only = self.file_name.is_empty()
-            && self.file_ext.as_ref().map_or(false, |s| !s.is_empty())
-            && self.folder_name == PathBuf::from("/home");
+        // let extension_only = self.file_name.is_empty()
+        //     && self.file_ext.as_ref().map_or(false, |s| !s.is_empty())
+        //     && self.folder_name == PathBuf::from("/home");
 
         let mut folder_path: PathBuf = if self.folder_name == PathBuf::from("/home") {
             self.folder_name.clone()
@@ -89,7 +89,7 @@ impl FzFinder{
 
         //cargo run -- --extension "d"
         //invalid command for e.g.
-        if folder_only || extension_only {
+        if folder_only {
             println!("\n\x1b[35mYou can use the following valid commands:\x1b[0m\n");
             let valid_set = valid_commands_set();
             for cmd in &valid_set {
@@ -102,11 +102,11 @@ impl FzFinder{
         if !self.file_name.is_empty() {
             if let Some(cached_path) = cache.get_value(&self.file_name) {
                folder_path = PathBuf::from(cached_path);
-                println!("Found a cached path")
+                // println!("Found a cached path")
             } else {
                 cache.insert(self.file_name.clone(), folder_path.to_string_lossy().to_string());
                 cache.clone().write_to_file("dashmap.txt");
-                println!("Cached: {} {}", &self.file_name, folder_path.display());
+                // println!("Cached: {} {}", &self.file_name, folder_path.display());
             }
         }
 
@@ -159,7 +159,7 @@ impl FzFinder{
                                 seen.clear();
                                 heap.clear();
                                 seen.insert(path.display().to_string());
-                                println!("Found: {}", path.display());
+                                // println!("Found: {}", path.display());
                                 bool_match = true;
                                 break;
                             }
@@ -168,7 +168,7 @@ impl FzFinder{
                             seen.clear();
                             heap.clear();
                             seen.insert(path.display().to_string());
-                            println!("Found: {}", path.display());
+                            // println!("Found: {}", path.display());
                             bool_match = true;
                             break;
                         }
@@ -213,7 +213,7 @@ fn find_folder(folder_name: &str) -> PathBuf {// find folder that will be used t
         }
     }
     let home_path: PathBuf = PathBuf::from("/home");
-    eprintln!("Folder not found, using default home directory");
+    // eprintln!("Folder not found, using default home directory");
     home_path
 
 }
