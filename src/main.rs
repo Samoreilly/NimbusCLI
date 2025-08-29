@@ -4,11 +4,9 @@ mod cache;
 
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashSet};
-use std::env::current_dir;
 use std::path::PathBuf;
 use std::sync::Arc;
-use clap::{Command, Parser};
-use tokio::signal;
+use clap::{Parser};
 use walkdir::WalkDir;
 use crate::cache::Cache;
 //TO TEST OUT IN TERMINAL
