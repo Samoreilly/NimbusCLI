@@ -74,7 +74,6 @@ impl<K, V> Cache<K, V> where
         // println!("Finished reading from file, length of vector: {}", self.map.len())
     }
     pub fn write_to_file(&self, path: &str) {
-        // println!("Writing to file");
         let entries: Vec<(_, _)> = self.map.iter().map(|kv| (kv.key().clone(), kv.value().clone())).collect();
 
         let serialized = serde_json::to_string_pretty(&entries).unwrap();

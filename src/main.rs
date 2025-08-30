@@ -6,11 +6,14 @@ use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashSet};
 use std::fs;
 use std::os::unix::fs::MetadataExt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use clap::{Parser, ArgAction};
+use tokio::fs::File;
 use walkdir::WalkDir;
 use crate::cache::Cache;
+use zip::{write, CompressionMethod, ZipWriter};
+use zip::write::FileOptions;
 //TO TEST OUT IN TERMINAL
 
 //SINGLE ARGUMENT TO SEARCH FOR A FILE
@@ -68,6 +71,8 @@ pub struct CliArgs {
     min: Option<String>,
     #[arg(short = 'r', long)]
     rename: Option<String>,
+    #[arg(short = 'z', long, action = ArgAction::SetTrue)]
+    zip: bool,
 
 
 }
@@ -87,9 +92,9 @@ pub struct FzFinder{
     pub max: Option<String>,
     pub min: Option<String>,
     pub rename: Option<String>,
-
-
+    pub zip: bool,
 }
+
 impl From<CliArgs> for FzFinder{
     fn from(cli: CliArgs) -> Self {
         Self {
@@ -102,7 +107,7 @@ impl From<CliArgs> for FzFinder{
             max: cli.max,
             min: cli.min,
             rename: cli.rename,
-
+            zip: cli.zip,
         }
     }
 }
@@ -113,8 +118,10 @@ impl FzFinder{
         let mut seen: HashSet<String> = HashSet::new();
         let mut heap = BinaryHeap::new();
 
+
+        //INVALID ARGUMENTS
         if let Some(ignore) = &self.ignore {
-            if !self.file_name.is_empty() {
+            if !self.file_name.is_empty(){
                 if self.file_name.trim().ends_with(ignore) {
                     if self.file_ext.is_some() {
                         println!(
@@ -148,7 +155,7 @@ impl FzFinder{
 
         //cargo run -- --extension "d"
         //invalid command for e.g.
-        if folder_only {
+        if folder_only  && !self.zip {
             println!("\n\x1b[35mYou can use the following valid commands:\x1b[0m");
             let valid_set = valid_commands_set();
             for cmd in &valid_set {
@@ -158,33 +165,61 @@ impl FzFinder{
         }
         //CACHE IMPLEMENTATION
 
-        if !self.file_name.is_empty()
-            && let Some(ignore) = &self.ignore
-            && !self.file_name.ends_with(ignore)
-            && let Some(ext) = &self.file_ext
-            && ignore.as_str() != ext.as_str()
-        {
+        if !self.file_name.is_empty() {
             if let Some(cached_path) = cache.get_value(&self.file_name) {
-               // folder_path = PathBuf::from(cached_path);
-                if self.folder_name == PathBuf::from("/home")  && self.file_ext.is_none(){
-                    println!("{}", cached_path.clone().to_string());
+                if self.folder_name == PathBuf::from("/home") && self.file_ext.is_none() {
+                    println!("{}", cached_path);
                     return vec![cached_path];
                 }
-                // println!("Found a cached path")
             } else {
                 cache.insert(self.file_name.clone(), folder_path.to_string_lossy().to_string());
-                cache.clone().write_to_file("dashmap.txt");
-                // println!("Cached: {} {}", &self.file_name, folder_path.display());
+                cache.write_to_file("dashmap.txt");
             }
         }
 
+
+        // if !self.file_name.is_empty()
+        //     && let Some(ignore) = &self.ignore
+        //     && !self.file_name.ends_with(ignore)
+        //     && let Some(ext) = &self.file_ext
+        //     && ignore.as_str() != ext.as_str()
+        // {
+        //     if let Some(cached_path) = cache.get_value(&self.file_name) {
+        //        // folder_path = PathBuf::from(cached_path);
+        //         if self.folder_name == PathBuf::from("/home")  && self.file_ext.is_none(){
+        //             println!("{}", cached_path.clone().to_string());
+        //             return vec![cached_path];
+        //         }
+        //         // println!("Found a cached path")
+        //     } else {
+        //         cache.insert(self.file_name.clone(), folder_path.to_string_lossy().to_string());
+        //         cache.clone().write_to_file("dashmap.txt");
+        //         // println!("Cached: {} {}", &self.file_name, folder_path.display());
+        //     }
+        // }
+
         //CACHE IMPLEMENTATION
         let _home_dir = dirs::home_dir().expect("Could not find home directory");
+                                                                    
+        if self.zip {
+            let zip_path = folder_path.with_extension("zip");
+            match zip_folder(&folder_path, &zip_path) {
+                Ok(_) => {
+                    println!("Successfully zipped folder: {} -> {}", folder_path.display(), zip_path.display());
+                    return vec![zip_path.to_string_lossy().to_string()];
+                }
+                Err(e) => {
+                    eprintln!("Failed to zip folder: {}", e);
+                    return Vec::new();
+                }
+            }
+        }
 
         for entry in WalkDir::new(folder_path).into_iter().filter_map(|e| e.ok()) {
 
             //compare every entry with a substring of the input
             let path = entry.path();
+            //ZIP FILE
 
             if path.is_file() && path.file_name().unwrap().to_string_lossy() == self.file_name && self.rename.is_some() && !self.file_name.is_empty(){
                 let new_path = path.with_file_name(self.rename.as_ref().unwrap());
@@ -323,6 +358,30 @@ impl FzFinder{
         top_matches
 
     }
+}
+fn zip_folder(folder_path: &Path, zip_output_path: &Path) -> zip::result::ZipResult<()> {
+    println!("Zipping folder: {}", folder_path.display());
+    let zip_file = fs::File::create(zip_output_path)?;
+    let mut zip = ZipWriter::new(zip_file);
+
+    let options = FileOptions::<()>::default().compression_method(CompressionMethod::Deflated);
+
+    let folder_len = folder_path.components().count();
+
+    for entry in WalkDir::new(folder_path).into_iter().filter_map(|e| e.ok()) {
+        let path = entry.path();
+        let name = path.components().skip(folder_len).collect::<std::path::PathBuf>();
+
+        if path.is_file() {
+            zip.start_file(name.to_string_lossy(), options)?;
+            let mut f = fs::File::open(path)?;
+            std::io::copy(&mut f, &mut zip)?;
+        } else if path.is_dir() && !name.as_os_str().is_empty() {
+            zip.add_directory(name.to_string_lossy(), options)?;
+        }
+    }
+    zip.finish()?;
+    Ok(())
 }
 
 fn get_memory_usage(amount: &str) -> u64{
