@@ -27,6 +27,8 @@ use crate::cache::Cache;
 
 //cargo run -- --folder-name "CLionProjects" --extension ".txt" --content "a"
 
+//cargo run -- --file-name "multipurposecli.txt" --ignore ".txt"
+
 
 
 #[derive(Eq, PartialEq)]
@@ -52,6 +54,8 @@ pub struct CliArgs {
     limit: Option<usize>,
     #[arg(short = 'c', long)]
     content: Option<String>,
+    #[arg(short = 'i', long)]
+    ignore: Option<String>,
 
 }
 #[derive(Parser, Debug)]
@@ -66,6 +70,7 @@ pub struct FzFinder{
     pub file_ext: Option<String>,
     pub limit: Option<usize>,
     pub content: Option<String>,
+    pub ignore: Option<String>,
 }
 impl From<CliArgs> for FzFinder{
     fn from(cli: CliArgs) -> Self {
@@ -75,6 +80,7 @@ impl From<CliArgs> for FzFinder{
             file_ext: cli.extension,
             limit: cli.limit,
             content: cli.content,
+            ignore: cli.ignore,
         }
     }
 }
@@ -85,6 +91,25 @@ impl FzFinder{
         let mut bool_match = false;
         let mut seen: HashSet<String> = HashSet::new();
         let mut heap = BinaryHeap::new();
+
+        if let Some(ignore) = &self.ignore {
+            if !self.file_name.is_empty() {
+                if self.file_name.trim().ends_with(ignore) {
+                    if self.file_ext.is_some() {
+                        println!(
+                            "\n\x1b[35mYou cannot ignore the file extension you are looking for\x1b[0m\n\
+                     \x1b[31mUse --help for more information\x1b[0m"
+                        );
+                    } else {
+                        println!(
+                            "\n\x1b[35mNote: You cannot search for a file that matches the ignore pattern\x1b[0m\n\
+                     \x1b[31mUse --help for more information\x1b[0m"
+                        );
+                    }
+                    return Vec::new();
+                }
+            }
+        }
 
         let folder_only = self.file_name.is_empty()
             && self.file_ext.as_ref().map_or(true, |s| s.is_empty())
@@ -103,7 +128,7 @@ impl FzFinder{
         //cargo run -- --extension "d"
         //invalid command for e.g.
         if folder_only {
-            println!("\n\x1b[35mYou can use the following valid commands:\x1b[0m\n");
+            println!("\n\x1b[35mYou can use the following valid commands:\x1b[0m");
             let valid_set = valid_commands_set();
             for cmd in &valid_set {
                 println!("{} \n", cmd);
@@ -112,7 +137,12 @@ impl FzFinder{
         }
         //CACHE IMPLEMENTATION
 
-        if !self.file_name.is_empty() {
+        if !self.file_name.is_empty()
+            && let Some(ignore) = &self.ignore
+            && !self.file_name.ends_with(ignore)
+            && let Some(ext) = &self.file_ext
+            && ignore.as_str() != ext.as_str()
+        {
             if let Some(cached_path) = cache.get_value(&self.file_name) {
                // folder_path = PathBuf::from(cached_path);
                 if self.folder_name == PathBuf::from("/home")  && self.file_ext.is_none(){
