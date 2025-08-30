@@ -5,6 +5,7 @@ mod cache;
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashSet};
 use std::fs;
+use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
 use std::sync::Arc;
 use clap::{Parser};
@@ -28,6 +29,8 @@ use crate::cache::Cache;
 //cargo run -- --folder-name "CLionProjects" --extension ".txt" --content "a"
 
 //cargo run -- --file-name "multipurposecli.txt" --ignore ".txt"
+
+//cargo run -- --file-name "multipurposecli.txt" --max "100kb"
 
 
 
@@ -56,6 +59,8 @@ pub struct CliArgs {
     content: Option<String>,
     #[arg(short = 'i', long)]
     ignore: Option<String>,
+    #[arg(short = 'm', long)]
+    max: Option<String>,
 
 }
 #[derive(Parser, Debug)]
@@ -71,6 +76,8 @@ pub struct FzFinder{
     pub limit: Option<usize>,
     pub content: Option<String>,
     pub ignore: Option<String>,
+    pub max: Option<String>,
+
 }
 impl From<CliArgs> for FzFinder{
     fn from(cli: CliArgs) -> Self {
@@ -81,6 +88,8 @@ impl From<CliArgs> for FzFinder{
             limit: cli.limit,
             content: cli.content,
             ignore: cli.ignore,
+            max: cli.max,
+
         }
     }
 }
@@ -165,12 +174,23 @@ impl FzFinder{
             //compare every entry with a substring of the input
             let path = entry.path();
 
+            if let Some(max) = &self.max {
+                let max = get_memory_usage(&max);//gets memory usage in bytes
+                if path.is_file(){
+                    if path.metadata().unwrap().size() >= max {
+                        continue;
+                    }
+                }
+            }//do min here
+
+
             if let Some(file_name) = path.file_name(){
                 if let Some(file_name_str) = file_name.to_str(){
 
                     //IF CONTENT ARGUMENT IS PRESENT, CHECK IF CONTENT IS IN FILE
                     // cargo run -- --folder-name "CLionProjects" --extension ".txt" --content "a"
 
+                    //CHECKING FOR CONTENT
                     let mut count = 0;
                     if let Some(content) = &self.content {
                         if path.is_file() {
@@ -262,7 +282,10 @@ impl FzFinder{
 
         }
         if bool_match{
-            return Vec::new();
+            let top_matches: Vec<String> = seen.into_iter().collect();
+            let formatted = top_matches.join("\n\n");
+            println!("{}", formatted);
+            return top_matches;
         }
 
         let mut top_matches = Vec::new();
@@ -277,6 +300,27 @@ impl FzFinder{
         println!("{}", formatted);
         top_matches
 
+    }
+}
+
+fn get_memory_usage(amount: &str) -> u64{
+    let mut size: u64  = 0;
+    let mut unit= "b".to_string();
+
+    for(index, val) in amount.chars().enumerate() {
+        if val.is_alphabetic() {
+            size = amount[0..index].parse().expect("Failed to parse number");
+            unit = amount[index..].to_lowercase();
+            break;
+        }
+    }
+    match unit.as_str() {
+        "b" => size,
+        "kb" => size.saturating_mul(1024),
+        "mb" => size.saturating_mul(1024 * 1024),
+        "gb" => size.saturating_mul(1024 * 1024 * 1024),
+        "tb" => size.saturating_mul(1024 * 1024 * 1024 * 1024),
+        _ => size,
     }
 }
 fn find_folder(folder_name: &str) -> PathBuf {// find folder that will be used to find the folder in fuzzy finder with folder and file arguments
