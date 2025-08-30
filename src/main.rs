@@ -31,6 +31,7 @@ use crate::cache::Cache;
 //cargo run -- --file-name "multipurposecli.txt" --ignore ".txt"
 
 //cargo run -- --file-name "multipurposecli.txt" --max "100kb"
+//cargo run -- --file-name "multipurposecli.txt" --min "870kb"
 
 
 
@@ -61,6 +62,8 @@ pub struct CliArgs {
     ignore: Option<String>,
     #[arg(short = 'm', long)]
     max: Option<String>,
+    #[arg(short = 'n', long)]
+    min: Option<String>,
 
 }
 #[derive(Parser, Debug)]
@@ -77,6 +80,7 @@ pub struct FzFinder{
     pub content: Option<String>,
     pub ignore: Option<String>,
     pub max: Option<String>,
+    pub min: Option<String>,
 
 }
 impl From<CliArgs> for FzFinder{
@@ -89,6 +93,8 @@ impl From<CliArgs> for FzFinder{
             content: cli.content,
             ignore: cli.ignore,
             max: cli.max,
+            min: cli.min,
+
 
         }
     }
@@ -177,11 +183,18 @@ impl FzFinder{
             if let Some(max) = &self.max {
                 let max = get_memory_usage(&max);//gets memory usage in bytes
                 if path.is_file(){
-                    if path.metadata().unwrap().size() >= max {
+                    if path.metadata().unwrap().size() > max {
                         continue;
                     }
                 }
-            }//do min here
+            }else if let Some(min) = &self.min {
+                let min = get_memory_usage(&min);//gets memory usage in bytes
+                if path.is_file(){
+                    if path.metadata().unwrap().size() < min {
+                        continue;
+                    }
+                }
+            }
 
 
             if let Some(file_name) = path.file_name(){
