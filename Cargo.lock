@@ -3,20 +3,6 @@
 version = 4
 
 [[package]]
-name = "MultipurposeCLI"
-version = "0.1.0"
-dependencies = [
- "clap",
- "dashmap",
- "dirs",
- "serde",
- "serde_json",
- "tokio",
- "walkdir",
- "zip",
-]
-
-[[package]]
 name = "addr2line"
 version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -563,6 +549,20 @@ dependencies = [
  "libc",
  "wasi 0.11.1+wasi-snapshot-preview1",
  "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "nimbuscli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "dashmap",
+ "dirs",
+ "serde",
+ "serde_json",
+ "tokio",
+ "walkdir",
+ "zip",
 ]
 
 [[package]]

@@ -63,7 +63,17 @@ impl<K, V> Cache<K, V> where
 
 
     pub fn read_from_file(&self, path: &str) {
-        let file = File::open(path).expect("file not found");
+        if !std::path::Path::new(path).exists() {
+            println!("No cache file found at {}, starting fresh", path);
+            return;
+        }
+        let file = match File::open(path) {
+            Ok(file) => file,
+            Err(e) => {
+                eprintln!("Warning: Could not open cache file {}: {}", path, e);
+                return;
+            }
+        };
         let reader = BufReader::new(file);
 
         let entries: Vec<(K, CacheEntry<V>)> = serde_json::from_reader(reader).unwrap_or_default();
