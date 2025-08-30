@@ -8,7 +8,7 @@ use std::fs;
 use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
 use std::sync::Arc;
-use clap::{Parser};
+use clap::{Parser, ArgAction};
 use walkdir::WalkDir;
 use crate::cache::Cache;
 //TO TEST OUT IN TERMINAL
@@ -64,6 +64,8 @@ pub struct CliArgs {
     max: Option<String>,
     #[arg(short = 'n', long)]
     min: Option<String>,
+    #[arg(long, action = ArgAction::SetTrue)]
+    json: bool,
 
 }
 #[derive(Parser, Debug)]
@@ -81,6 +83,7 @@ pub struct FzFinder{
     pub ignore: Option<String>,
     pub max: Option<String>,
     pub min: Option<String>,
+    pub json: bool,
 
 }
 impl From<CliArgs> for FzFinder{
@@ -94,8 +97,7 @@ impl From<CliArgs> for FzFinder{
             ignore: cli.ignore,
             max: cli.max,
             min: cli.min,
-
-
+            json: cli.json,
         }
     }
 }
@@ -264,8 +266,7 @@ impl FzFinder{
                     }
 
 
-                    //gets the exact result - no others
-
+                    //gets the exact file path if match is found
                     if file_name_str.eq_ignore_ascii_case(&self.file_name) {
                         if let Some(ext) = &self.file_ext {
                             // Check if the file ends with the extension
@@ -287,9 +288,6 @@ impl FzFinder{
                             break;
                         }
                     }
-
-
-
                 }
             }
 
@@ -308,6 +306,7 @@ impl FzFinder{
                 break;
             }
         }
+
         let formatted = top_matches.join("\n\n");
 
         println!("{}", formatted);
@@ -399,12 +398,53 @@ fn get_subsequences(input: &str, entry: &str, extension: &Option<String>) -> usi
     input.chars().filter(|&c| entry_text.any(|x| x == c)).count()
 }
 
+impl MatchItem {
+    fn calculate_score(&self) -> f64{
+
+
+        let mut score: f64 =  (self.substring_len * 10 + self.subsequence_len) as f64;
+
+        score += self.folder_names();
+        score += self.path_depth();
+
+        score
+    }
+    fn path_depth(&self) -> f64{
+        let mut score: f64 = 0.0;
+        let mut depth = 0;
+        for c in self.path.chars() {
+            if c == '/' {
+                depth += 1;
+            }
+        }
+        if depth < 3{
+            score += 15.0;
+        }else if depth < 5{
+            score += 10.0;
+        }else if depth < 8{
+            score += 5.0;
+        }
+        score
+
+    }
+    fn folder_names(&self) -> f64{
+        let mut score: f64 = 0.0;
+        if(self.path.contains(".txt") || self.path.contains("/src") || self.path.contains("/bin") || self.path.contains("/lib")|| self.path.contains("/docs") || self.path.contains("/public") || self.path.contains("/app")|| self.path.contains("/core")){
+            score += 20.0;
+        }
+        if self.path.contains("node_modules") || self.path.contains("/target/") {
+            score -= 20.0;
+        }
+
+        score
+    }
+}
 // custom ordering: max-heap
 impl Ord for MatchItem {
     fn cmp(&self, other: &Self) -> Ordering { // Ordering goes as substring_len -> subsequence_len -> file_name
-        self.substring_len //this compares substring len with other if same, then compares subsequence len
-            .cmp(&other.substring_len)
-            .then(self.subsequence_len.cmp(&other.subsequence_len))
+        self.calculate_score()
+            .partial_cmp(&other.calculate_score())
+            .unwrap_or(Ordering::Equal)
     }
 }
 
@@ -413,6 +453,8 @@ impl PartialOrd for MatchItem {
         Some(self.cmp(other))
     }
 }
+
+
 
 fn valid_commands_set() -> HashSet<&'static str> {
     [
