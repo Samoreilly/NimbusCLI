@@ -1,6 +1,7 @@
-NimbusCLI - Smart File Finder 🔍 FOR LINUX/DEBIAN ONLY
+# NimbusCLI - Smart File Finder 🔍 FOR LINUX/DEBIAN ONLY
 
-A lightning-fast command line tool that helps you find files when you can't remember exact names. Uses fuzzy matching to understand what you're looking for.
+A lightning-fast command line tool that helps you find files when you can't remember exact names.
+Uses fuzzy matching to understand what you're looking for.
 
 
 # Download and install in one command
