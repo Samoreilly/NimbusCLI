@@ -33,6 +33,8 @@ use crate::cache::Cache;
 //cargo run -- --file-name "multipurposecli.txt" --max "100kb"
 //cargo run -- --file-name "multipurposecli.txt" --min "870kb"
 
+//cargo run -- --file-name "multipurposecli.txt" --rename "mlpcli.txt"
+
 
 
 #[derive(Eq, PartialEq)]
@@ -64,8 +66,9 @@ pub struct CliArgs {
     max: Option<String>,
     #[arg(short = 'n', long)]
     min: Option<String>,
-    #[arg(long, action = ArgAction::SetTrue)]
-    json: bool,
+    #[arg(short = 'r', long)]
+    rename: Option<String>,
+
 
 }
 #[derive(Parser, Debug)]
@@ -83,7 +86,8 @@ pub struct FzFinder{
     pub ignore: Option<String>,
     pub max: Option<String>,
     pub min: Option<String>,
-    pub json: bool,
+    pub rename: Option<String>,
+
 
 }
 impl From<CliArgs> for FzFinder{
@@ -97,13 +101,13 @@ impl From<CliArgs> for FzFinder{
             ignore: cli.ignore,
             max: cli.max,
             min: cli.min,
-            json: cli.json,
+            rename: cli.rename,
+
         }
     }
 }
 impl FzFinder{
     pub fn fuzzy_finder(&self, cache: Arc<Cache<String, String>>) -> Vec<String> {
-
 
         let mut bool_match = false;
         let mut seen: HashSet<String> = HashSet::new();
@@ -181,6 +185,12 @@ impl FzFinder{
 
             //compare every entry with a substring of the input
             let path = entry.path();
+
+            if path.is_file() && path.file_name().unwrap().to_string_lossy() == self.file_name && self.rename.is_some() && !self.file_name.is_empty(){
+                let new_path = path.with_file_name(self.rename.as_ref().unwrap());
+                fs::rename(&path, new_path).expect("Could not rename file");
+                println!("Renamed file: {} to {}", &self.file_name, &self.rename.clone().unwrap());
+            }
 
             if let Some(max) = &self.max {
                 let max = get_memory_usage(&max);//gets memory usage in bytes
