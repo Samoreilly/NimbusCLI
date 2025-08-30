@@ -165,7 +165,7 @@ impl FzFinder{
         }
         //CACHE IMPLEMENTATION
 
-        if !self.file_name.is_empty() {
+        if !self.file_name.is_empty() && self.rename.is_none(){
             if let Some(cached_path) = cache.get_value(&self.file_name) {
                 if self.folder_name == PathBuf::from("/home") && self.file_ext.is_none() {
                     println!("{}", cached_path);
@@ -200,7 +200,7 @@ impl FzFinder{
 
         //CACHE IMPLEMENTATION
         let _home_dir = dirs::home_dir().expect("Could not find home directory");
-                                                                    
+
         if self.zip {
             let zip_path = folder_path.with_extension("zip");
             match zip_folder(&folder_path, &zip_path) {
@@ -214,31 +214,46 @@ impl FzFinder{
                 }
             }
         }
+        let max_files = 10000000;
+        let mut file_count = 0;
 
         for entry in WalkDir::new(folder_path).into_iter().filter_map(|e| e.ok()) {
+            file_count += 1;
 
+            if file_count >= max_files {
+                println!("Reached maximum number of files to search");
+                return Vec::new();
+            }
             //compare every entry with a substring of the input
             let path = entry.path();
             //ZIP FILE
 
             if path.is_file() && path.file_name().unwrap().to_string_lossy() == self.file_name && self.rename.is_some() && !self.file_name.is_empty(){
-                let new_path = path.with_file_name(self.rename.as_ref().unwrap());
-                fs::rename(&path, new_path).expect("Could not rename file");
-                println!("Renamed file: {} to {}", &self.file_name, &self.rename.clone().unwrap());
+                let new_path = path.with_file_name(self.rename.clone().unwrap());
+                if let Err(err) = fs::rename(&path, &new_path) {
+                    eprintln!("\n\x1b[31mFailed to rename {}: {}\x1b[0m", path.display(), err);
+                }
+                println!(
+                    "\n\x1b[32mRenamed {} to {}\x1b[0m", path.display(), new_path.display());
+                return Vec::new();
             }
 
             if let Some(max) = &self.max {
                 let max = get_memory_usage(&max);//gets memory usage in bytes
                 if path.is_file(){
-                    if path.metadata().unwrap().size() > max {
-                        continue;
+                    if let Ok(metadata) = path.metadata() {
+                        if metadata.size() > max {
+                            continue;
+                        }
                     }
                 }
             }else if let Some(min) = &self.min {
                 let min = get_memory_usage(&min);//gets memory usage in bytes
                 if path.is_file(){
-                    if path.metadata().unwrap().size() < min {
-                        continue;
+                    if let Ok(metadata) = path.metadata() {
+                        if metadata.size() < min {
+                            continue;
+                        }
                     }
                 }
             }
@@ -246,6 +261,7 @@ impl FzFinder{
 
             if let Some(file_name) = path.file_name(){
                 if let Some(file_name_str) = file_name.to_str(){
+
 
                     //IF CONTENT ARGUMENT IS PRESENT, CHECK IF CONTENT IS IN FILE
                     // cargo run -- --folder-name "CLionProjects" --extension ".txt" --content "a"
@@ -390,7 +406,12 @@ fn get_memory_usage(amount: &str) -> u64{
 
     for(index, val) in amount.chars().enumerate() {
         if val.is_alphabetic() {
-            size = amount[0..index].parse().expect("Failed to parse number");
+            if let Ok(parsed_size) = amount[0..index].parse() {
+                size = parsed_size;
+            } else {
+                eprintln!("Warning: Invalid size format '{}'", amount);
+                return 0; // Or handle error appropriately
+            }
             unit = amount[index..].to_lowercase();
             break;
         }
