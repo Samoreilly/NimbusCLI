@@ -2,6 +2,7 @@
 
 mod cache;
 
+use std::ascii::AsciiExt;
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashSet};
 use std::fs;
@@ -73,6 +74,8 @@ pub struct CliArgs {
     rename: Option<String>,
     #[arg(short = 'z', long, action = ArgAction::SetTrue)]
     zip: bool,
+    #[arg(short = 'p', long, action = ArgAction::SetTrue)]
+    preview: bool
 
 
 }
@@ -93,6 +96,7 @@ pub struct FzFinder{
     pub min: Option<String>,
     pub rename: Option<String>,
     pub zip: bool,
+    pub preview: bool
 }
 
 impl From<CliArgs> for FzFinder{
@@ -108,6 +112,7 @@ impl From<CliArgs> for FzFinder{
             min: cli.min,
             rename: cli.rename,
             zip: cli.zip,
+            preview: cli.preview
         }
     }
 }
@@ -155,7 +160,7 @@ impl FzFinder{
 
         //cargo run -- --extension "d"
         //invalid command for e.g.
-        if folder_only  && !self.zip {
+        if folder_only  && !self.zip  && !self.preview {
             println!("\n\x1b[35mYou can use the following valid commands:\x1b[0m");
             let valid_set = valid_commands_set();
             for cmd in &valid_set {
@@ -163,9 +168,15 @@ impl FzFinder{
             }
             return Vec::new();
         }
-        //CACHE IMPLEMENTATION
 
-        if !self.file_name.is_empty() && self.rename.is_none(){
+        //PREVIEW IMPLEMENTATION
+
+
+        //PREVIEW IMPLEMENTATION
+
+
+        //CACHE IMPLEMENTATION
+        if !self.file_name.is_empty() && self.rename.is_none() && !self.preview {
             if let Some(cached_path) = cache.get_value(&self.file_name) {
                 if self.folder_name == PathBuf::from("/home") && self.file_ext.is_none() {
                     println!("{}", cached_path);
@@ -226,6 +237,28 @@ impl FzFinder{
             }
             //compare every entry with a substring of the input
             let path = entry.path();
+
+
+            if path.is_file() && self.preview {
+                if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
+                    if self.file_name.eq_ignore_ascii_case(file_name) {
+                        if let Some(ext) = &self.file_ext {
+                            if file_name.to_lowercase().ends_with(&ext.to_lowercase()) {
+                                if let Ok(contents) = fs::read_to_string(path) {
+                                    println!("\n{}", contents);
+                                }
+                                return Vec::new();
+                            }
+                        } else {
+                            if let Ok(contents) = fs::read_to_string(path) {
+                                println!("\n{}", contents);
+                            }
+                            return Vec::new();
+                        }
+                    }
+                }
+            }
+
             //ZIP FILE
 
             if path.is_file() && path.file_name().unwrap().to_string_lossy() == self.file_name && self.rename.is_some() && !self.file_name.is_empty(){
@@ -247,7 +280,9 @@ impl FzFinder{
                         }
                     }
                 }
-            }else if let Some(min) = &self.min {
+            }
+            //changed from else if to if so both can run
+            if let Some(min) = &self.min {
                 let min = get_memory_usage(&min);//gets memory usage in bytes
                 if path.is_file(){
                     if let Ok(metadata) = path.metadata() {
@@ -304,7 +339,7 @@ impl FzFinder{
                     let subsequence_len = get_subsequences(&self.file_name, file_name_str, &self.file_ext);
                     let substring_len = get_substring(&self.file_name, file_name_str, &self.file_ext);
 
-                    if self.file_name.is_empty() {
+                    if self.file_name.is_empty(){
                         if let (Some(ext), Some(_folder_name)) = (&self.file_ext, &self.folder_name.to_str()) {
                             if file_name_str.to_lowercase().ends_with(&ext.to_lowercase()) {
                                 heap.push(MatchItem {
