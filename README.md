@@ -1,12 +1,12 @@
 ## NimbusCLI - Smart File Finder 🔍 FOR LINUX/DEBIAN ONLY
 
-A lightning-fast command line tool that helps you find files when you can't remember exact names.
-Uses fuzzy matching to understand what you're looking for.
+No more remembering exact names. Find files naturally with fuzzy search with convenience.
 
 
 ## Download and install in one command
 ```
-curl -LO https://github.com/Samoreilly/NimbusCLI/releases/download/cli/nimbuscli && chmod +x nimbuscli && sudo mv nimbuscli /usr/local/bin/
+curl -LO https://github.com/Samoreilly/NimbusCLI/releases/download/cli/nimbuscli
+&& chmod +x nimbuscli && sudo mv nimbuscli /usr/local/bin/
 ```
 
 ## Verify it works
@@ -16,55 +16,67 @@ nimbuscli --help
 
 
 ### 1. Find files when you remember part of the name
+* Finds: config.toml, configuration.yaml, my_config.txt, etc.
 ```
 nimbuscli --file-name "config"
 ```
-Finds: config.toml, configuration.yaml, my_config.txt, etc.
 
 ### 2. Search for specific file types
+* Finds all text files containing "readme"
 ```
 nimbuscli --extension ".txt" --file-name "readme"
 ```
-Finds all text files containing "readme"
 
 ### 3. Find files by size
 
-Find large log files
+* Find large log files
 
 ```
 nimbuscli --extension ".log" --min "10MB"
 ```
 
-Finds small config files  
+* Finds small config files  
 ```
 nimbuscli --max "1KB" --file-name "config"
 ```
 
 ### 4. Search inside file contents
 
-Find files containing "TODO" comments
+* Find files containing "TODO" comments
 ```
 nimbuscli --content "TODO" --extension ".rs"
 ```
 
 ## 5. Advanced fuzzy search
 
-### Finds "multipurposecli.txt" even if you type it wrong
+* Finds "multipurposecli.txt" even if you type it wrong
 ```
 nimbuscli --file-name "mltpurpose" --extension ".txt"
 ```
 
-Why You'll Love It
+# Why You'll Reach for NimbusCLI
 
-    Understands typos - finds files even if you spell names wrong
+It just works:
 
-    Blazing fast - written in Rust for instant results
+    ✅ No complex syntax to remember
 
-    Smart ranking - shows most relevant files first
+    ✅ Finds files when you can't recall exact names
 
-    No setup - works immediately after download
+    ✅ Understands what you mean, not just what you type
 
+    ✅ Works immediately after download
+
+Perfect for when you:
+
+    Can't remember if it's config.yaml or configuration.yml
+
+    Need to find all large log files quickly
+
+    Want to search inside files without grep complexity
+
+    Prefer typing naturally over perfect spelling
+    
 Need Help?
 ```
-## nimbuscli --help  # Show all options and examples
+nimbuscli --help  # Shows simple examples and options
 ```
