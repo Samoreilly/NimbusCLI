@@ -241,12 +241,14 @@ impl FzFinder{
             //compare every entry with a substring of the input
             let path = entry.path();
             if self.content.is_some(){
-                let result = find_content(self.content.as_ref().unwrap(), &path);
+                let ext: Option<&str> = self.file_ext.as_deref();
+                let result = find_content(self.content.as_ref().unwrap(), &path, ext);
 
                 for item in result {
                     println!("{}", item);
                 }
 
+               return Vec::new();
             }
 
             if path.is_file() && self.preview {
@@ -420,22 +422,37 @@ impl FzFinder{
 
     }
 }
-fn find_content(content: &str, folder_path: &Path) -> Vec<String> {
+fn find_content(content: &str, folder_path: &Path, extension: Option<&str>) -> Vec<String> {
     let mut top_matches = Vec::new();
+
     for entry in WalkDir::new(folder_path).into_iter().filter_map(|e| e.ok()) {
         let path = entry.path();
-        if path.is_file() {
-            if let Ok(contents) = fs::read_to_string(path) {
-                for (index, line) in contents.lines().enumerate() {
-                    if line.contains(content) {
-                        let result = format!("{}:{}", path.display(), index + 1);
-                        top_matches.push(result);
-                        break;
-                    }
+
+        if !path.is_file() {
+            continue;
+        }
+
+        if let Some(ext_filter) = extension {    //if extension exists check if extension matches
+            let ext_filter = ext_filter.trim_start_matches('.');
+            let file_ext = path.extension().and_then(|e| e.to_str());
+
+            if file_ext.map_or(true, |e| !e.ends_with(ext_filter)) {
+                continue;
+            }
+        }
+
+
+        if let Ok(contents) = fs::read_to_string(path) {
+            for (index, line) in contents.lines().enumerate() {
+                if line.contains(content) {
+                    let result = format!("{}:{}\n{}\n", path.display(), index + 1, line);
+                    top_matches.push(result);
+                    break;
                 }
             }
         }
     }
+
     top_matches
 }
 fn zip_folder(folder_path: &Path, zip_output_path: &Path) -> zip::result::ZipResult<()> {
