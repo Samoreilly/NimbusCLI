@@ -123,6 +123,14 @@ impl FzFinder{
         let mut seen: HashSet<String> = HashSet::new();
         let mut heap = BinaryHeap::new();
 
+        if self.file_name.is_empty() && self.preview {
+            println!("\n\x1b[1;91mWarning: You didn’t specify a file name to search\x1b[0m");
+
+            println!("\x1b[31;1mWarning: You tried to preview a folder\x1b[0m");
+
+            println!("\n\x1b[33m--help for more information");
+            return Vec::new();
+        }
 
         //INVALID ARGUMENTS
         if let Some(ignore) = &self.ignore {
@@ -157,7 +165,6 @@ impl FzFinder{
         }else{
             find_folder(&self.folder_name.to_string_lossy())
         };
-
         //cargo run -- --extension "d"
         //invalid command for e.g.
         if folder_only  && !self.zip  && !self.preview {
@@ -168,15 +175,13 @@ impl FzFinder{
             }
             return Vec::new();
         }
-
         //PREVIEW IMPLEMENTATION
 
 
         //PREVIEW IMPLEMENTATION
-
 
         //CACHE IMPLEMENTATION
-        if !self.file_name.is_empty() && self.rename.is_none() && !self.preview {
+        if !self.file_name.is_empty() && self.rename.is_none() && !self.preview && self.content.is_none() {
             if let Some(cached_path) = cache.get_value(&self.file_name) {
                 if self.folder_name == PathBuf::from("/home") && self.file_ext.is_none() {
                     println!("{}", cached_path);
@@ -211,7 +216,6 @@ impl FzFinder{
 
         //CACHE IMPLEMENTATION
         let _home_dir = dirs::home_dir().expect("Could not find home directory");
-
         if self.zip {
             let zip_path = folder_path.with_extension("zip");
             match zip_folder(&folder_path, &zip_path) {
@@ -230,14 +234,20 @@ impl FzFinder{
 
         for entry in WalkDir::new(folder_path).into_iter().filter_map(|e| e.ok()) {
             file_count += 1;
-
             if file_count >= max_files {
                 println!("Reached maximum number of files to search");
                 return Vec::new();
             }
             //compare every entry with a substring of the input
             let path = entry.path();
+            if self.content.is_some(){
+                let result = find_content(self.content.as_ref().unwrap(), &path);
 
+                for item in result {
+                    println!("{}", item);
+                }
+
+            }
 
             if path.is_file() && self.preview {
                 if let Some(file_name) = path.file_name().and_then(|n| n.to_str()) {
@@ -409,6 +419,24 @@ impl FzFinder{
         top_matches
 
     }
+}
+fn find_content(content: &str, folder_path: &Path) -> Vec<String> {
+    let mut top_matches = Vec::new();
+    for entry in WalkDir::new(folder_path).into_iter().filter_map(|e| e.ok()) {
+        let path = entry.path();
+        if path.is_file() {
+            if let Ok(contents) = fs::read_to_string(path) {
+                for (index, line) in contents.lines().enumerate() {
+                    if line.contains(content) {
+                        let result = format!("{}:{}", path.display(), index + 1);
+                        top_matches.push(result);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    top_matches
 }
 fn zip_folder(folder_path: &Path, zip_output_path: &Path) -> zip::result::ZipResult<()> {
     println!("Zipping folder: {}", folder_path.display());
